@@ -175,56 +175,6 @@ if fetch_btn:
         st.dataframe(df_display.reset_index(drop=True), use_container_width=True)
 
         st.markdown("---")
-        st.subheader("Announcements (expanded view)")
-
-        for i, item in enumerate(table):
-            dt = item.get("DT_TM") or item.get("NEWS_DT") or ""
-            try:
-                dt_str = datetime.fromisoformat(dt).strftime("%Y-%m-%d %H:%M:%S") if dt else ""
-            except Exception:
-                dt_str = str(dt)
-            headline = item.get("HEADLINE") or item.get("NEWSSUB") or "No headline"
-            subcat = item.get("SUBCATNAME") or item.get("NEWSSUB") or ""
-            critical = bool(int(item.get("CRITICALNEWS", 0))) if item.get("CRITICALNEWS") is not None else False
-            attachment = item.get("ATTACHMENTNAME") or ""
-            pdf_url = build_pdf_url(attachment)
-            company_page = item.get("NSURL") or ""
-            size = item.get("Fld_Attachsize")
-            row_key = f"row_{i}"
-
-            with st.expander(f"{dt_str} — {headline}"):
-                st.write("**Subcategory:**", subcat)
-                st.write("**Scrip**:", item.get("SCRIP_CD"), " — ", item.get("SLONGNAME"))
-                st.write("**Critical:**", "Yes" if critical else "No")
-                if size:
-                    st.write("**Attachment size:**", f"{int(size):,} bytes")
-                if company_page:
-                    st.write("Company page on BSE:", company_page)
-
-                cols_ui = st.columns([1, 1, 1, 2])
-                if pdf_url:
-                    if cols_ui[0].button("Open PDF in new tab", key=f"open_{row_key}"):
-                        st.markdown(f"[Open PDF]({pdf_url})")
-                    if cols_ui[1].button("Download PDF", key=f"dl_{row_key}"):
-                        with st.spinner("Attempting to download PDF..."):
-                            pdf_bytes = try_download_pdf(pdf_url)
-                            if pdf_bytes:
-                                st.download_button(
-                                    label="Download PDF (fetched)",
-                                    data=pdf_bytes,
-                                    file_name=f"{item.get('XML_NAME','announcement')}.pdf",
-                                    mime="application/pdf"
-                                )
-                            else:
-                                st.warning("Could not fetch PDF directly — opening BSE page instead.")
-                                st.markdown(f"[Open announcement page]({company_page})")
-                else:
-                    cols_ui[0].write("No attachment available")
-
-                if cols_ui[3].button("Open company page", key=f"company_{row_key}"):
-                    st.markdown(f"[Open company page]({company_page})")
-
-        st.markdown("---")
         st.caption("Tip: if attachments do not download, BSE may block hotlinking. Use 'Open PDF' / 'Open company page' to view in BSE UI.")
 
     else:
