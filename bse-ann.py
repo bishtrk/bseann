@@ -6,6 +6,19 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 
+# Load company mapping
+@st.cache_data
+def load_company_mapping():
+    df = pd.read_csv('company_list.csv')
+    df.columns = df.columns.str.strip()
+    # Create dictionary: company name -> scrip code
+    mapping = dict(zip(df['NAME OF COMPANY'].str.strip(), df['SCRIP CODE']))
+    # Create reverse mapping for validation
+    reverse_mapping = dict(zip(df['SCRIP CODE'], df['NAME OF COMPANY'].str.strip()))
+    return mapping, reverse_mapping, list(mapping.keys())
+
+company_mapping, scrip_to_company, company_list = load_company_mapping()
+
 API_BASE = "https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w"
 BSE_ANN_PAGE = "https://www.bseindia.com/corporates/ann.html"
 PDF_VIEW_BASE = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/"
@@ -124,7 +137,15 @@ def fetch_announcements(scrip, category, prev_date, to_date, str_search, str_typ
 # -------------------------
 with st.sidebar.form("filters"):
     st.header("Query parameters")
-    scrip = st.text_input("Scrip code", value="543985")
+
+    # Get default company name for scrip code 543985
+    default_company = scrip_to_company.get(543985, company_list[0]) if company_list else ""
+
+    selected_company = st.selectbox("Select Company", options=company_list, index=company_list.index(default_company) if default_company in company_list else 0)
+
+    # Convert selected company name to scrip code
+    scrip = company_mapping.get(selected_company, "")
+
     category = st.text_input("Category (strCat)", value="Company Update")
     prev_date = st.date_input("From (YYYY-MM-DD)", value=datetime(2025, 8, 1))
     to_date = st.date_input("To (YYYY-MM-DD)", value=datetime(2025, 9, 1))
@@ -182,7 +203,8 @@ if fetch_btn:
         st.subheader("PDF Downloads and Links")
         for i, (_, row) in enumerate(df_display.iterrows()):
             if row.get("ATTACHMENTNAME") and row.get("PDF_URL"):
-                st.write(f"**{row.get('HEADLINE', 'Announcement')}** - {row.get('SCRIP_CD', '')}")
+                company_name = scrip_to_company.get(row.get('SCRIP_CD', ''), row.get('SCRIP_CD', ''))
+                st.write(f"**{row.get('HEADLINE', 'Announcement')}** - {company_name} ({row.get('SCRIP_CD', '')})")
                 cols = st.columns([1, 2])
                 with cols[0]:
                     st.markdown(f"[Download PDF]({row['PDF_URL']})")
@@ -199,4 +221,4 @@ if fetch_btn:
         st.markdown("[Open announcements page on BSE for manual inspection](https://www.bseindia.com/corporates/ann.html)")
 
 else:
-    st.info("Set filters in the sidebar and click **Fetch announcements**.")
+    st.info("Select a company from the sidebar and click **Fetch announcements**.")
