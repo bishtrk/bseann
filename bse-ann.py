@@ -8,7 +8,7 @@ from datetime import datetime
 
 API_BASE = "https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w"
 BSE_ANN_PAGE = "https://www.bseindia.com/corporates/ann.html"
-PDF_VIEW_BASE = "https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname="
+PDF_VIEW_BASE = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/"
 
 st.set_page_config(page_title="BSE Announcements Explorer", layout="wide")
 st.title("BSE Announcements Explorer")
@@ -171,10 +171,25 @@ if fetch_btn:
             df_display["DT_TM"] = pd.to_datetime(df_display["DT_TM"], errors="coerce")
             df_display = df_display.sort_values("DT_TM", ascending=False)
 
+        # Add PDF URL column
+        df_display["PDF_URL"] = df_display["ATTACHMENTNAME"].apply(lambda x: build_pdf_url(x) if x else "")
+
         st.markdown(f"**Total results (page {pageno})**: {meta.get('ROWCNT', 'unknown')}")
         st.dataframe(df_display.reset_index(drop=True), use_container_width=True)
 
+        # Download buttons section
         st.markdown("---")
+        st.subheader("PDF Downloads and Links")
+        for i, (_, row) in enumerate(df_display.iterrows()):
+            if row.get("ATTACHMENTNAME") and row.get("PDF_URL"):
+                st.write(f"**{row.get('HEADLINE', 'Announcement')}** - {row.get('SCRIP_CD', '')}")
+                cols = st.columns([1, 2])
+                with cols[0]:
+                    st.markdown(f"[Download PDF]({row['PDF_URL']})")
+                with cols[1]:
+                    st.write(f"Full PDF URL: `{row['PDF_URL']}`")
+                st.markdown("---")
+
         st.caption("Tip: if attachments do not download, BSE may block hotlinking. Use 'Open PDF' / 'Open company page' to view in BSE UI.")
 
     else:
